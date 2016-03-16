@@ -1,0 +1,13 @@
+# systemd service file for maxwells-daemon
+
+[Unit]
+Description="maxwells-daemon canarying daemon"
+After=network.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/maxwells-daemon -application app -table MaxwellsDaemon -region us-east-1
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
