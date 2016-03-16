@@ -1,0 +1,52 @@
+# This is an example nginx `sites-available` file to use with maxwell-daemon.
+# Lua scripting is used to communicate with the daemon.
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    location / {
+        # Arbitrate the request's path (defaulting to master).
+        set $maxwell "master";
+        access_by_lua '
+            local canary = ngx.req.get_headers()["maxwellsdaemon"]
+            if canary == nil then
+                canary = ""
+            end
+            local sock = ngx.socket.tcp()
+            sock:settimeout(8) -- 8 milliseconds
+            local ok, err = sock:connect("unix:/tmp/maxwells-daemon.sock")
+            if not ok then
+                ngx.log(ngx.ERR, "canarying: could not connect to local canary daemon on unix:/tmp/maxwells-daemon.sock")
+                return
+            end
+            local bytes, err = sock:send(canary .. "\n")
+            if err ~= nil then
+                ngx.log(ngx.ERR, "canarying: error sending data to canary daemon: " .. err)
+                sock:close()
+                return
+            end
+            if bytes ~= (string.len(canary) + 1) then
+                ngx.log(ngx.ERR, "canarying: could not send all data to canary daemon: " .. canary .. "$")
+                sock:close()
+                return
+            end
+            local assignment, err, partial = sock:receive("*l")
+            if err ~= nil then
+                ngx.log(ngx.ERR, "canarying: did not receive full assignment response from canary daemon: " .. err)
+                sock:close()
+                return
+            end
+            ngx.req.set_header("maxwellsdaemon", assignment)
+            local location, err, partial = sock:receive("*l")
+            if err ~= nil then
+            ngx.log(ngx.ERR, "canarying: did not receive full location response from canary daemon: " .. err)
+                sock:close()
+                return
+            end
+            ngx.var.maxwell = location
+        ';
+
+        proxy_pass     http://$maxwell-cluster.internal:80;
+        proxy_redirect http://$maxwell-cluster.internal:80 /;
+    }
+}
