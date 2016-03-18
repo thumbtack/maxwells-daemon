@@ -56,9 +56,9 @@ func TestDynamoDBRolloutUpdate(t *testing.T) {
 		t.Fatalf("error writing to dynamodb: %v", err)
 	}
 	defer deleteRollout(db, key)
-	rollout := NewDynamoDBRollout(&NilMonitor{}, db, *table, key, time.Second, 8*time.Second)
+	rollout, _ := NewDynamoDBRollout(&NilMonitor{}, db, *table, key, time.Second, 8*time.Second)
 	time.Sleep(1 * time.Second)
-	value := rollout.ReadRollout()
+	value := rollout.Get()
 	if value != 0.5 {
 		t.Fatalf("expected to read 0.5, read %v", value)
 	}
@@ -74,9 +74,9 @@ func TestDynamoDBRolloutMissing(t *testing.T) {
 	config := aws.NewConfig().WithRegion(*region).WithHTTPClient(client).WithMaxRetries(2)
 	db := dynamodb.New(session.New(), config)
 	key := fmt.Sprintf("test-%v", rand.Float64())
-	rollout := NewDynamoDBRollout(&NilMonitor{}, db, *table, key, time.Second, 8*time.Second)
+	rollout, _ := NewDynamoDBRollout(&NilMonitor{}, db, *table, key, time.Second, 8*time.Second)
 	time.Sleep(1 * time.Second)
-	value := rollout.ReadRollout()
+	value := rollout.Get()
 	if value != 0 {
 		t.Fatalf("expected to read 0, read %v", value)
 	}
@@ -97,9 +97,9 @@ func TestDynamoDBRolloutType(t *testing.T) {
 		t.Fatalf("error writing to dynamodb: %v", err)
 	}
 	defer deleteRollout(db, key)
-	rollout := NewDynamoDBRollout(&NilMonitor{}, db, *table, key, time.Second, 8*time.Second)
+	rollout, _ := NewDynamoDBRollout(&NilMonitor{}, db, *table, key, time.Second, 8*time.Second)
 	time.Sleep(1 * time.Second)
-	value := rollout.ReadRollout()
+	value := rollout.Get()
 	if value != 0 {
 		t.Fatalf("expected to read 0, read %v", value)
 	}

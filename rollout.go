@@ -14,10 +14,10 @@ import (
 // Rollout is an interface implemented by a value that can provide a rollout
 // percentage as a decimal in the range [0.0,1.0]
 type Rollout interface {
-	// ReadRollout provides the current rollout value.
+	// Get provides the current rollout value.
 	// Note that it is possible for the value to be outside of the
 	// acceptable [0.0,1.0] range - this should be checked by the caller.
-	ReadRollout() float64
+	Get() float64
 }
 
 // A DynamoDBRollout represents a rollout that is continuously fetched from
@@ -36,10 +36,20 @@ type DynamoDBRollout struct {
 }
 
 // NewDynamoDBRollout creates a new DynamoDBRollout and begins eternally
-// querying DynamoDB for canary values.
-func NewDynamoDBRollout(monitor Monitor, db *dynamodb.DynamoDB, table string, application string, delay time.Duration, unhealthy time.Duration) *DynamoDBRollout {
+// querying the given DynamoDB table in the given region for canary values for
+// the given application.
+// Queries to DynamoDB are interspersed with the given delay to avoid using up
+// all the read capacity.
+// If calls to DynamoDB fail / are unhealthy for the specified amount of time,
+// rollout will be dropped 0.0.
+func NewDynamoDBRollout(monitor Monitor, db *dynamodb.DynamoDB, table string, application string, delay time.Duration, unhealthy time.Duration) (*DynamoDBRollout, error) {
+	const hashField string = "application"
+	const rangeField string = "version"
+	const rangeKey string = "canary"
+	const rolloutField string = "rollout"
+
 	if db == nil {
-		return nil
+		return nil, fmt.Errorf("dynamo.DynamoDB argument is nil")
 	}
 	dynamodbRollout := &DynamoDBRollout{
 		db:      db,
@@ -51,10 +61,10 @@ func NewDynamoDBRollout(monitor Monitor, db *dynamodb.DynamoDB, table string, ap
 	getItemInput := &dynamodb.GetItemInput{
 		TableName: aws.String(table),
 		Key: map[string]*dynamodb.AttributeValue{
-			"application": {S: aws.String(application)},
-			"version":     {S: aws.String("canary")},
+			hashField:  {S: aws.String(application)},
+			rangeField: {S: aws.String(rangeKey)},
 		},
-		ProjectionExpression: aws.String("rollout"),
+		ProjectionExpression: aws.String(rolloutField),
 		ConsistentRead:       aws.Bool(true),
 	}
 	loadRollout := func() (float64, error) {
@@ -99,12 +109,12 @@ func NewDynamoDBRollout(monitor Monitor, db *dynamodb.DynamoDB, table string, ap
 			time.Sleep(delay)
 		}
 	}()
-	return dynamodbRollout
+	return dynamodbRollout, nil
 }
 
-// ReadRollout provides the most recently read rollout value from DynamoDB.
+// Get provides the most recently read rollout value from DynamoDB.
 // The return value may be outside of the [0.0,1.0] range.
-func (dynamodbRollout *DynamoDBRollout) ReadRollout() float64 {
+func (dynamodbRollout *DynamoDBRollout) Get() float64 {
 	dynamodbRollout.mutex.RLock()
 	defer dynamodbRollout.mutex.RUnlock()
 	return dynamodbRollout.rollout
@@ -123,8 +133,8 @@ func NewConstantRollout(value float64) *ConstantRollout {
 	}
 }
 
-// ReadRollout provides the rollout value that this value was created with.
+// Get provides the rollout value that this value was created with.
 // The return value may be outside of the [0.0,1.0] range.
-func (constantRollout *ConstantRollout) ReadRollout() float64 {
+func (constantRollout *ConstantRollout) Get() float64 {
 	return constantRollout.value
 }

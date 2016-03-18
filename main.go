@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 )
 
+// TODO: Try github.com/golang/glog
 func main() {
 	socket := flag.String("socket", "/tmp/maxwells-daemon.sock", "path to the unix socket file")
 	application := flag.String("application", "app", "application name (referenced by DynamoDB)")
@@ -28,7 +29,7 @@ func main() {
 	handle, err := os.OpenFile(*logfile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 
 	// monitor
-	monitor := NewDogStatsDMonitor()
+	monitor := NewDogStatsDMonitor(8125)
 
 	// rollout
 	client := &http.Client{
@@ -36,7 +37,10 @@ func main() {
 	}
 	config := aws.NewConfig().WithRegion(*region).WithHTTPClient(client).WithMaxRetries(2)
 	db := dynamodb.New(session.New(), config)
-	rollout := NewDynamoDBRollout(monitor, db, *table, *application, *delay, *unhealthy)
+	rollout, err := NewDynamoDBRollout(monitor, db, *table, *application, *delay, *unhealthy)
+	if err != nil {
+		log.Fatal("error creating rollout: %v\n", err)
+	}
 
 	// handler
 	handler := NewCanaryHandler(monitor, rollout)

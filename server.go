@@ -32,8 +32,6 @@ type UnixServer struct {
 	schan     chan time.Time
 }
 
-// TODO: Comply with Close()
-
 // NewUnixServer creates a UnixServer that listens on the given file, passing
 // incoming traffic to the given handler.
 func NewUnixServer(monitor Monitor, handler Handler, filename string) (*UnixServer, error) {
@@ -69,6 +67,34 @@ func (unixServer *UnixServer) Close() error {
 	return nil
 }
 
+func (unixServer *UnixServer) serveConn(handler Handler, connection *net.UnixConn) error {
+	connection.SetDeadline(time.Now().Add(time.Second))
+	var buffer bytes.Buffer
+	data := make([]byte, 1024)
+	for {
+		requestLength, err := connection.Read(data)
+		if err != nil {
+			return fmt.Errorf("could not read from connection: %v", err)
+		}
+		if data[requestLength-1] == '\n' {
+			buffer.Write(data[:requestLength-1])
+			break
+		} else {
+			buffer.Write(data)
+		}
+	}
+	result := handler.Handle(string(buffer.Bytes()))
+	count, err := connection.Write([]byte(result + "\n"))
+	if err != nil {
+		return fmt.Errorf("could not write to connection: %v", err)
+	}
+	expected := len([]byte(result + "\n"))
+	if count != expected {
+		return fmt.Errorf("could not write to connection: wrote %v out of %v bytes", count, expected)
+	}
+	return nil
+}
+
 func (unixServer *UnixServer) serve(monitor Monitor, handler Handler) {
 	defer unixServer.waitGroup.Done()
 	wg := &sync.WaitGroup{}
@@ -94,38 +120,12 @@ func (unixServer *UnixServer) serve(monitor Monitor, handler Handler) {
 		wg.Add(1)
 		go func() {
 			timeStart := time.Now()
-			connection.SetDeadline(time.Now().Add(time.Second))
-			var buffer bytes.Buffer
-			data := make([]byte, 1024)
-			for {
-				requestLength, err := connection.Read(data)
-				if err != nil {
-					monitor.RecordServe(err)
-					log.Printf("server: error reading from connection: %v\n", err)
-					connection.Close()
-					return
-				}
-				if data[requestLength-1] == '\n' {
-					buffer.Write(data[:requestLength-1])
-					break
-				} else {
-					buffer.Write(data)
-				}
-			}
-			result := handler.Handle(string(buffer.Bytes()))
-			count, err := connection.Write([]byte(result + "\n"))
+			err := unixServer.serveConn(handler, connection.(*net.UnixConn))
 			if err != nil {
-				monitor.RecordServe(err)
-				log.Printf("server: error writing to connection: %v\n", err)
+				log.Printf("server: %v\n", err)
 			}
-			expected := len([]byte(result + "\n"))
-			if count != expected {
-				err = fmt.Errorf("wrote %v out of %v bytes", count, expected)
-				monitor.RecordServe(err)
-				log.Printf("server: error writing to connection: %v\n", err)
-			}
+			monitor.RecordServe(err)
 			connection.Close()
-			monitor.RecordServe(nil)
 			monitor.RecordServingTime(time.Since(timeStart))
 			wg.Done()
 		}()

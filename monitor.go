@@ -9,22 +9,6 @@ import (
 
 // Monitor is an interface implemented by a value that can record metrics about
 // the daemon.
-/*
-type Monitor interface {
-	// RecordServingTime records the amount of time it took to completely
-	// handle a request to the system (acceptance to full response).
-	RecordServingTime(time.Duration)
-	// IncrementAssignment increases the count of number of times an
-	// assignment was given a specific location.
-	IncrementLocation(string)
-	// IncrementErrorAssignment increases the count of the number of errors
-	// that occurred while processing an incoming assignment.
-	IncrementErrorHandlerAssignment()
-	// IncrementErrorRollout increases the count of the number of errors
-	// that occurred while processing a rollout value.
-	IncrementRollout(error)
-}
-*/
 type Monitor interface {
 	RecordServe(error)
 	RecordServingTime(time.Duration)
@@ -35,20 +19,22 @@ type Monitor interface {
 // A DogStatsDMonitor represents a proxy for sending metrics to Datadog using
 // the namespace prefix "maxwellsdaemon.".
 type DogStatsDMonitor struct {
+	port uint16
 	conn net.Conn
 }
 
 // NewDogStatsDMonitor creates a connection to the dogstatsd agent and prepares
 // to accept metrics.
-func NewDogStatsDMonitor() *DogStatsDMonitor {
+func NewDogStatsDMonitor(port uint16) *DogStatsDMonitor {
 	return &DogStatsDMonitor{
+		port: port,
 		conn: nil,
 	}
 }
 
 func (statsdMonitor *DogStatsDMonitor) send(s string) {
 	if statsdMonitor.conn == nil {
-		conn, err := net.Dial("udp", "127.0.0.1:8125")
+		conn, err := net.Dial("udp", fmt.Sprintf("127.0.0.1:%v", statsdMonitor.port))
 		if err != nil {
 			log.Printf("monitor: could not connect to DogStatsD: %v\n", err)
 			return

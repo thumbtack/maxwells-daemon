@@ -1,7 +1,7 @@
 # maxwells-daemon
 
 [![Build Status](https://img.shields.io/travis/thumbtack/maxwells-daemon.svg)(https://travis-ci.org/thumbtack/maxwells-daemon)
-[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/aws/aws-sdk-go/blog/master/LICENSE.txt)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/thumbtack/maxwells-daemon/blob/master/LICENSE.txt)
 
 maxwells-daemon is a tool for canarying traffic to different versions of an
 application.
