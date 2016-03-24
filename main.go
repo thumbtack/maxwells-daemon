@@ -27,6 +27,10 @@ func main() {
 
 	rand.Seed(time.Now().UTC().UnixNano())
 	handle, err := os.OpenFile(*logfile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
+		log.Printf("error opening log file: %v: %v", *logfile, err)
+	}
+	log.SetOutput(handle)
 
 	// monitor
 	monitor := NewDogStatsDMonitor(8125)
@@ -39,13 +43,14 @@ func main() {
 	db := dynamodb.New(session.New(), config)
 	rollout, err := NewDynamoDBRollout(monitor, db, *table, *application, *delay, *unhealthy)
 	if err != nil {
-		log.Fatal("error creating rollout: %v\n", err)
+		log.Fatalf("error creating rollout: %v\n", err)
 	}
 
 	// handler
 	handler := NewCanaryHandler(monitor, rollout)
 
 	// server
+	os.Remove(*socket)
 	server, err := NewUnixServer(monitor, handler, *socket)
 	if err != nil {
 		log.Fatalf("error starting server: %v\n", err)
