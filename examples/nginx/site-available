@@ -1,5 +1,10 @@
 # This is an example nginx `sites-available` file to use with maxwell-daemon.
+#
 # Lua scripting is used to communicate with the daemon.
+#
+# This code is a modified version of the configuration used at Thumbtack for
+# routing production traffic.
+#
 server {
     listen 80 default_server;
     listen [::]:80 default_server;

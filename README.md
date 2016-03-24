@@ -1,7 +1,7 @@
 # maxwells-daemon
 
 [![Build Status](https://img.shields.io/travis/thumbtack/maxwells-daemon.svg)(https://travis-ci.org/thumbtack/maxwells-daemon)
-[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/thumbtack/maxwells-daemon/blob/master/LICENSE.txt)
+[![BSD 3 Clause License](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](https://github.com/thumbtack/maxwells-daemon/blob/master/LICENSE.txt)
 
 maxwells-daemon is a tool for canarying traffic to different versions of an
 application.
@@ -25,11 +25,14 @@ By default, the daemon is powered by a DynamoDB backend. The flags `-region`,
 percentage. DynamoDB tables are expected to have a string hash key of
 "application", a string range key of "version" (which must always have the
 value "canary"), and a number key "rollout" that holds a value in the range
-[0.0,1.0].
+[0.0,1.0]. The credentials for AWS should be provided through the environment
+variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
 
 An example execution of the program would be:
 
 ```
+AWS_ACCESS_KEY_ID=AKID1234567890 \
+AWS_SECRET_ACCESS_KEY=MY-SECRET-KEY \
 maxwells-daemon \
     -application 'website' \
     -table 'MaxwellsDaemon' \
