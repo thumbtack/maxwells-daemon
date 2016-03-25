@@ -1,6 +1,6 @@
 # maxwells-daemon
 
-[![Build Status](https://img.shields.io/travis/thumbtack/maxwells-daemon.svg)(https://travis-ci.org/thumbtack/maxwells-daemon)
+![Build Status](https://img.shields.io/travis/thumbtack/maxwells-daemon.svg)(https://travis-ci.org/thumbtack/maxwells-daemon)
 [![BSD 3 Clause License](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](https://github.com/thumbtack/maxwells-daemon/blob/master/LICENSE.txt)
 
 maxwells-daemon is a tool for canarying traffic to different versions of an
