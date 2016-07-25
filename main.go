@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -23,6 +24,7 @@ func main() {
 	delay := flag.Duration("delay", 4*time.Second, "minimum delay between DynamoDB rollout requests")
 	unhealthy := flag.Duration("unhealthy", 8*time.Second, "minimum duration to allow unhealthy DynamoDB querying before reverting to 0.0 rollout")
 	logfile := flag.String("logfile", "/var/log/maxwells-daemon.log", "path to the log file")
+	stateDir := flag.String("state-dir", "/var/lib/maxwells-daemon", "path to the app's state directory")
 	flag.Parse()
 
 	rand.Seed(time.Now().UTC().UnixNano())
@@ -49,6 +51,12 @@ func main() {
 	// handler
 	handler := NewCanaryHandler(monitor, rollout)
 
+	// maintenance daemon
+	maintenance, err := NewMaintenanceDaemon(path.Join(*stateDir, *application), monitor, rollout)
+	if err != nil {
+		log.Fatal("error creating maintenance daemon: %v\n", err)
+	}
+
 	// server
 	os.Remove(*socket)
 	server, err := NewUnixServer(monitor, handler, *socket)
@@ -65,6 +73,7 @@ func main() {
 		log.Printf("received interrupt signal\n")
 		server.Close()
 		handle.Close()
+		maintenance.Stop()
 		os.Exit(130)
 	}
 }
