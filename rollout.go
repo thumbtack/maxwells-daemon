@@ -92,6 +92,7 @@ func NewDynamoDBRollout(monitor Monitor, db *dynamodb.DynamoDB, table string, ap
 	const rolloutField string = "rollout"
 	// []strings are not constants
 	rangeKeys := []string{
+		"maintenance",
 		"canary",
 	}
 
