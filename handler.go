@@ -50,7 +50,11 @@ func (canaryHandler *CanaryHandler) Handle(input string) string {
 		log.Printf("handler: assignment is out of [0.0,1.0) range: %v\n", assignment)
 		return fmt.Sprintf(format, rand.Float64(), value)
 	}
-	rollout := canaryHandler.rollout.Get()
+	rolloutP := canaryHandler.rollout.Get("canary")
+	rollout := 0.0
+	if rolloutP != nil {
+		rollout = *rolloutP
+	}
 	if rollout < 0 || rollout > 1 {
 		canaryHandler.monitor.RecordHandling(value, fmt.Errorf("rollout out of range"))
 		log.Printf("handler: rollout is out of [0.0,1.0] range\n")

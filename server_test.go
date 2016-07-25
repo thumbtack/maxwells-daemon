@@ -782,7 +782,7 @@ func TestUnixServingLargeInput(t *testing.T) {
 		t.Fatalf("could not write long text to server: %v", err)
 	}
 	if count != len(input) {
-		t.Fatalf("only wrote %v out of %v bytes to server")
+		t.Fatalf("wrote %v out of %v bytes to server", count, len(input))
 	}
 	response, err := bufio.NewReader(connection).ReadString('\n')
 	if err != nil {

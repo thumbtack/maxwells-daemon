@@ -58,8 +58,8 @@ func TestDynamoDBRolloutUpdate(t *testing.T) {
 	defer deleteRollout(db, key)
 	rollout, _ := NewDynamoDBRollout(&NilMonitor{}, db, *table, key, time.Second, 8*time.Second)
 	time.Sleep(1 * time.Second)
-	value := rollout.Get()
-	if value != 0.5 {
+	value := rollout.Get("canary")
+	if value == nil || *value != 0.5 {
 		t.Fatalf("expected to read 0.5, read %v", value)
 	}
 }
@@ -76,9 +76,9 @@ func TestDynamoDBRolloutMissing(t *testing.T) {
 	key := fmt.Sprintf("test-%v", rand.Float64())
 	rollout, _ := NewDynamoDBRollout(&NilMonitor{}, db, *table, key, time.Second, 8*time.Second)
 	time.Sleep(1 * time.Second)
-	value := rollout.Get()
-	if value != 0 {
-		t.Fatalf("expected to read 0, read %v", value)
+	value := rollout.Get("canary")
+	if value != nil {
+		t.Fatalf("expected to read nil, read %v", value)
 	}
 }
 
@@ -99,8 +99,31 @@ func TestDynamoDBRolloutType(t *testing.T) {
 	defer deleteRollout(db, key)
 	rollout, _ := NewDynamoDBRollout(&NilMonitor{}, db, *table, key, time.Second, 8*time.Second)
 	time.Sleep(1 * time.Second)
-	value := rollout.Get()
-	if value != 0 {
+	value := rollout.Get("canary")
+	if value != nil {
 		t.Fatalf("expected to read 0, read %v", value)
+	}
+}
+
+func TestDynamoDBRolloutCall(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+	client := &http.Client{
+		Timeout: time.Second,
+	}
+	config := aws.NewConfig().WithRegion(*region).WithHTTPClient(client).WithMaxRetries(2)
+	db := dynamodb.New(session.New(), config)
+	key := fmt.Sprintf("test-%v", rand.Float64())
+	err := putRolloutValue(db, key, &dynamodb.AttributeValue{N: aws.String("0.5")})
+	if err != nil {
+		t.Fatalf("error writing to dynamodb: %v", err)
+	}
+	defer deleteRollout(db, key)
+	rollout, _ := NewDynamoDBRollout(&NilMonitor{}, db, *table, key, time.Second, 8*time.Second)
+	time.Sleep(1 * time.Second)
+	value := rollout.Get("canaryyyyy!!!")
+	if value != nil {
+		t.Fatalf("expected to read nil, read %v", value)
 	}
 }
