@@ -52,7 +52,7 @@ func main() {
 	handler := NewCanaryHandler(monitor, rollout)
 
 	// maintenance daemon
-	maintenance, err := NewMaintenanceDaemon(path.Join(*stateDir, *application), monitor, rollout)
+	maintenance, err := NewMaintenanceDaemon(path.Join(*stateDir, "maintenance", *application), monitor, rollout)
 	if err != nil {
 		log.Fatal("error creating maintenance daemon: %v\n", err)
 	}
