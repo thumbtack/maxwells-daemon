@@ -40,7 +40,7 @@ type DynamoDBRollout struct {
 	db       *dynamodb.DynamoDB
 	table    string
 	mutex    *sync.RWMutex
-	versions map[string]version
+	versions map[string]*version
 }
 
 func (r *DynamoDBRollout) update(unhealthy time.Duration, updates map[string]float64) {
@@ -69,7 +69,7 @@ func (r *DynamoDBRollout) update(unhealthy time.Duration, updates map[string]flo
 	for key, val := range updates {
 		_, ok := r.versions[key]
 		if !ok {
-			r.versions[key] = version{
+			r.versions[key] = &version{
 				lastUpdated: time.Now(),
 				isUnhealthy: false,
 				percentage:  val,
@@ -103,7 +103,7 @@ func NewDynamoDBRollout(monitor Monitor, db *dynamodb.DynamoDB, table string, ap
 		db:       db,
 		table:    table,
 		mutex:    &sync.RWMutex{},
-		versions: make(map[string]version),
+		versions: make(map[string]*version),
 	}
 	var keys []map[string]*dynamodb.AttributeValue
 	for _, key := range rangeKeys {
