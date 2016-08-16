@@ -58,11 +58,13 @@ func NewMaintenanceDaemon(fullpath string, monitor Monitor, rollout Rollout) (*M
 	go func() {
 		tick := time.NewTicker(time.Second)
 		defer tick.Stop()
-		select {
-		case <-md.ch:
-			return
-		case <-tick.C:
-			md.update(rollout.Get("maintenance"))
+		for {
+			select {
+			case <-md.ch:
+				return
+			case <-tick.C:
+				md.update(rollout.Get("maintenance"))
+			}
 		}
 	}()
 	return md, nil
